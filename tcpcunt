@@ -1,0 +1,52 @@
+#!/usr/bin/env python3.12
+# -*- coding: utf-8 -*_
+
+# This is the beginning of a TCP 3way handshake fuzzer
+
+import argparse
+import requests
+import json
+import sys
+import os
+
+import tcpcunts.network as network
+
+from scapy.all import *
+
+def tcpcunt_init():
+    #sport = random.randint(1024, 65535)
+    sport = 80
+    seq_number = 1000
+    print("[+] Computed random source port %d" %sport)
+    ip = IP(src=network.obtain_public_ipv4(), dst=argv.ip)
+    print("[+] Crafting IP headers/packet for target %s" %argv.ip)
+    SYN = TCP(sport=sport, dport=argv.port, flags='S', seq=seq_number)
+    print("[+] SYN TCP port to %d; Seq number to %d" %(argv.port, seq_number))
+    print("[:] Sending SYN; Awaiting SYNACK")
+    SYNACK=sr1(ip/SYN, timeout=2)
+    if SYNACK is None:
+        print("[-] We received no ACK for our SYN. Dying.")
+        sys.exit(1)
+
+    saa = SYNACK.ack + 1
+    sas = SYNACK.seq + 1
+    print("[+] Sent SYN TCP/IP frame; Sending/Awaiting ACK packet")
+    ACK=TCP(sport=sport, dport=argv.port, flags='A', seq=saa, ack=sas)
+    send(ip/ACK)
+    print("[!] Mission complete.")
+
+def tcpcunt_gc():
+    pass
+
+if __name__ == "__main__":
+    os.system("clear")
+
+    parser = argparse.ArgumentParser("tcpcunt")
+    parser.add_argument("target", help="Target IPv4/IPV6 address or Hostname")
+    parser.add_argument("-port", "-p", help="Targetport", default=443, type=int)
+    parser.add_argument("--strategy", "-s", help="Strategy bypass|dos", dest="s")
+    argv = parser.parse_args()
+
+    tcpcunt_init()
+    tcpcunt_gc()
+
